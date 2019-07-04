@@ -12,4 +12,4 @@ tags:
 
 > A short notes on some scheme theoretic notions.
 
-[Scheme Theoretic Notions](XuandeLiu.github.io/files/STC.pdf)
+[Scheme Theoretic Notions](http://XuandeLiu.github.io/files/STC.pdf)
