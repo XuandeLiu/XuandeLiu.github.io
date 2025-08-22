@@ -89,3 +89,46 @@ for ep in range(1, cfg['train']['epochs']+1):
 from utils.common import save_json
 save_json({'best_inner_test_r2': best_metric}, f"{cfg['paths']['metrics_dir']}/train_summary.json")
 logger.info(f'Best inner_test R2: {best_metric:.6f} (checkpoint saved).')
+
+
+
+
+import pandas as pd, torch, os
+from data.uam_threeway_prep import ThreeWayConfig, make_threeway_loaders
+from models.deeplobv import DeepLOBv
+from utils.metrics import masked_r2_last
+
+dc = cfg['data']
+twc = ThreeWayConfig(
+    date_col=dc['date_col'], time_col=dc['time_col'], symbol_col=dc['symbol_col'], y_col=dc['y_col'],
+    inner_split_date=dc['inner_split_date'], L_days=dc['L_days'], bars_per_day=dc['bars_per_day'],
+    min_valid_ratio=dc['min_valid_ratio'], use_sparse=dc['use_sparse'],
+    add_delta_g_feature=dc['add_delta_g_feature'], delta_cap=dc['delta_cap'],
+    K_per_symbol=dc['K_per_symbol'], batch_size=dc['batch_size'],
+    num_workers=dc['num_workers'], pin_memory=dc['pin_memory']
+)
+
+training_df = pd.read_parquet('data/interim/training.parquet')
+testing_df  = pd.read_parquet('data/interim/testing.parquet')
+train_loader, inner_test_loader, outer_test_loader, meta = make_threeway_loaders(training_df, testing_df, twc)
+
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+model = DeepLOBv(in_features=meta['X'].shape[1], **cfg['model']).to(device)
+state = torch.load(args.ckpt, map_location=device)
+model.load_state_dict(state); model.eval()
+
+@torch.no_grad()
+def eval_loader(loader):
+    r2_sum = 0.0; n_batch = 0
+    for xb, yb, mb in loader:
+        xb, yb, mb = xb.to(device), yb.to(device), mb.to(device)
+        yh = model(xb)
+        r2_sum += masked_r2_last(yh, yb, mb).item(); n_batch += 1
+    return r2_sum / max(1, n_batch)
+
+r2_inner = eval_loader(inner_test_loader)
+r2_outer = eval_loader(outer_test_loader)
+print(f'Inner-split R2: {r2_inner:.6f} | Outer-test (2023) R2: {r2_outer:.6f}')
+
+from utils.common import save_json
+save_json({'r2_inner': r2_inner, 'r2_outer': r2_outer}, os.path.join(cfg['paths']['metrics_dir'], 'eval_summary.json'))
