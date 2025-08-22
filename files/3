@@ -1,0 +1,21 @@
+# python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+.env
+
+# jupyter
+.ipynb_checkpoints/
+
+# outputs
+outputs/
+!outputs/.gitkeep
+
+# data (可按需)
+data/
+!data/.gitkeep
+
+# OS
+.DS_Store
