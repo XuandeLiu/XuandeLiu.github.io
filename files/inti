@@ -52,3 +52,18 @@ __all__ = [
     "ThreeWayConfig",
     "make_threeway_loaders",
 ]
+
+
+
+# src/models/__init__.py
+"""
+Models subpackage: neural network architectures.
+"""
+
+from __future__ import annotations
+
+from .deeplobv import DeepLOBv
+
+__all__ = [
+    "DeepLOBv",
+]
