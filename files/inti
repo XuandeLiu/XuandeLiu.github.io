@@ -67,3 +67,33 @@ from .deeplobv import DeepLOBv
 __all__ = [
     "DeepLOBv",
 ]
+
+
+
+
+# src/utils/__init__.py
+"""
+Utilities subpackage: common helpers, metrics, logging.
+"""
+
+from __future__ import annotations
+
+from .common import (
+    set_seed,
+    device_auto,
+    save_json,
+)
+from .metrics import (
+    masked_mse,
+    masked_mae,
+    masked_r2_last,
+)
+from .logging import (
+    get_logger,
+)
+
+__all__ = [
+    "set_seed", "device_auto", "save_json",
+    "masked_mse", "masked_mae", "masked_r2_last",
+    "get_logger",
+]
