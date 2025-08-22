@@ -1,0 +1,133 @@
+# src/train.py
+from __future__ import annotations
+import os, argparse, time
+import torch
+from torch.cuda.amp import autocast, GradScaler
+from tqdm import tqdm
+
+from config import load_config, ensure_dirs
+from utils.common import set_seed, device_auto, save_json
+from utils.logging import get_logger
+from utils.metrics import masked_mse, masked_mae, masked_r2_last
+from models.deeplobv import DeepLOBv
+from data.uam_threeway_prep import ThreeWayConfig, make_threeway_loaders
+
+def build_loaders(cfg):
+    dc = cfg['data']
+    twc = ThreeWayConfig(
+        date_col=dc['date_col'], time_col=dc['time_col'], symbol_col=dc['symbol_col'], y_col=dc['y_col'],
+        inner_split_date=dc['inner_split_date'],
+        L_days=dc['L_days'], bars_per_day=dc['bars_per_day'], min_valid_ratio=dc['min_valid_ratio'],
+        use_sparse=dc['use_sparse'], add_delta_g_feature=dc['add_delta_g_feature'], delta_cap=dc['delta_cap'],
+        K_per_symbol=dc['K_per_symbol'], batch_size=dc['batch_size'],
+        num_workers=dc['num_workers'], pin_memory=dc['pin_memory']
+    )
+    # 这里假设你在外部加载好 training_df/testing_df 并传进来；为了保持独立性，示例用全局变量
+    raise RuntimeError("请在 train.py 中加载你的 training_df/testing_df，再调用 make_threeway_loaders(training_df, testing_df, twc)")
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--config', type=str, default='configs/default.yaml')
+    parser.add_argument('--save_dir', type=str, default=None, help='覆盖默认输出目录（可选）')
+    args = parser.parse_args()
+
+    cfg = load_config(args.config)
+    ensure_dirs(cfg)
+    set_seed(cfg['seed'])
+    device = device_auto()
+
+    # ---- 在这里加载你的两个 DataFrame ----
+    # 推荐：你已有的 pandas 对象，直接 import 或 pd.read_parquet
+    # 例如：
+    # import pandas as pd
+    # training_df = pd.read_parquet('data/interim/training.parquet')
+    # testing_df  = pd.read_parquet('data/interim/testing.parquet')
+
+    # 替换 build_loaders：直接用 make_threeway_loaders
+    from data.uam_threeway_prep import ThreeWayConfig, make_threeway_loaders
+    dc = cfg['data']
+    twc = ThreeWayConfig(
+        date_col=dc['date_col'], time_col=dc['time_col'], symbol_col=dc['symbol_col'], y_col=dc['y_col'],
+        inner_split_date=dc['inner_split_date'], L_days=dc['L_days'], bars_per_day=dc['bars_per_day'],
+        min_valid_ratio=dc['min_valid_ratio'], use_sparse=dc['use_sparse'],
+        add_delta_g_feature=dc['add_delta_g_feature'], delta_cap=dc['delta_cap'],
+        K_per_symbol=dc['K_per_symbol'], batch_size=dc['batch_size'],
+        num_workers=dc['num_workers'], pin_memory=dc['pin_memory']
+    )
+    # TODO: 替换为你的真实数据加载
+    import pandas as pd; raise_on_no_data = True
+    if raise_on_no_data:
+        raise RuntimeError("请在 src/train.py 中把 training_df/testing_df 的加载代码改为你的真实路径。")
+
+    # train_loader, inner_test_loader, outer_test_loader, meta = make_threeway_loaders(training_df, testing_df, twc)
+    # in_features = meta['X'].shape[1]
+
+    # model = DeepLOBv(in_features=in_features, **cfg['model']).to(device)
+    # opt = torch.optim.AdamW(model.parameters(), lr=cfg['train']['lr'], weight_decay=cfg['train']['weight_decay'])
+
+    # # 学习率调度
+    # sch_cfg = cfg['train']['scheduler']; scheduler = None
+    # if sch_cfg['name'] == 'cosine':
+    #     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=sch_cfg['t_max'], eta_min=sch_cfg['min_lr'])
+    # elif sch_cfg['name'] == 'plateau':
+    #     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, mode='max',
+    #         factor=sch_cfg['factor'], patience=sch_cfg['patience'], min_lr=sch_cfg['min_lr'])
+
+    # scaler = GradScaler(enabled=cfg['train']['amp'])
+    # logger = get_logger('train', cfg['paths']['logs_dir'])
+    # best_metric, best_state = -1e9, None
+    # patience, bad = cfg['train']['early_stopping']['patience'], 0
+    # metric_name = cfg['train']['early_stopping']['metric']
+
+    # def eval_loader(loader):
+    #     model.eval()
+    #     r2_sum = 0.0; n_batch = 0
+    #     with torch.no_grad():
+    #         for xb, yb, mb in loader:
+    #             xb, yb, mb = xb.to(device), yb.to(device), mb.to(device)
+    #             yh = model(xb)
+    #             r2 = masked_r2_last(yh, yb, mb).item()
+    #             r2_sum += r2; n_batch += 1
+    #     return r2_sum / max(1, n_batch)
+
+    # for ep in range(1, cfg['train']['epochs']+1):
+    #     model.train()
+    #     pbar = tqdm(train_loader, desc=f'Epoch {ep}/{cfg["train"]["epochs"]}')
+    #     for xb, yb, mb in pbar:
+    #         xb, yb, mb = xb.to(device), yb.to(device), mb.to(device)
+    #         opt.zero_grad(set_to_none=True)
+    #         with autocast(enabled=cfg['train']['amp']):
+    #             yh = model(xb)
+    #             loss = masked_mse(yh, yb, mb)
+    #         scaler.scale(loss).backward()
+    #         torch.nn.utils.clip_grad_norm_(model.parameters(), cfg['train']['grad_clip'])
+    #         scaler.step(opt); scaler.update()
+    #         pbar.set_postfix(loss=float(loss.item()))
+
+    #     # 验证：用 inner_test（内部分割的后半段）
+    #     val_metric = eval_loader(inner_test_loader)
+    #     logger.info(f'Epoch {ep} | inner_test {metric_name}: {val_metric:.6f}')
+
+    #     if scheduler is not None:
+    #         if cfg['train']['scheduler']['name'] == 'plateau':
+    #             scheduler.step(val_metric)
+    #         else:
+    #             scheduler.step()
+
+    #     # 早停
+    #     if val_metric > best_metric + cfg['train']['early_stopping']['min_delta']:
+    #         best_metric, bad = val_metric, 0
+    #         best_state = {k: v.cpu() for k, v in model.state_dict().items()}
+    #         torch.save(best_state, os.path.join(cfg['paths']['checkpoints_dir'], 'best.pt'))
+    #     else:
+    #         bad += 1
+    #         if cfg['train']['early_stopping']['enabled'] and bad >= patience:
+    #             logger.info('Early stopping triggered.')
+    #             break
+
+    # # 保存指标
+    # save_json({'best_inner_test_r2': best_metric}, os.path.join(cfg['paths']['metrics_dir'], 'train_summary.json'))
+    # logger.info(f'Best inner_test R2: {best_metric:.6f} (checkpoint saved).')
+
+if __name__ == '__main__':
+    main()
