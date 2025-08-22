@@ -1,0 +1,32 @@
+# src/utils/logging.py
+import logging, os
+
+def get_logger(name: str, log_dir: str):
+    os.makedirs(log_dir, exist_ok=True)
+    logger = logging.getLogger(name)
+    logger.setLevel(logging.INFO)
+    logger.handlers.clear()
+    fmt = logging.Formatter('[%(asctime)s] %(levelname)s - %(message)s')
+    ch = logging.StreamHandler(); ch.setLevel(logging.INFO); ch.setFormatter(fmt)
+    fh = logging.FileHandler(os.path.join(log_dir, f'{name}.log'), encoding='utf-8')
+    fh.setLevel(logging.INFO); fh.setFormatter(fmt)
+    logger.addHandler(ch); logger.addHandler(fh)
+    return logger
+
+# src/utils/metrics.py
+import torch
+
+def masked_mse(yh, y, m):
+    return ((yh - y)**2 * m).sum() / (m.sum() + 1e-8)
+
+def masked_mae(yh, y, m):
+    return (torch.abs(yh - y) * m).sum() / (m.sum() + 1e-8)
+
+@torch.no_grad()
+def masked_r2_last(yh, y, m):
+    # 只看窗口最后一格
+    yh_last, y_last, m_last = yh[:, -1], y[:, -1], m[:, -1]
+    y_bar = (y_last * m_last).sum() / (m_last.sum() + 1e-8)
+    ss_res = ((yh_last - y_last)**2 * m_last).sum()
+    ss_tot = (((y_last - y_bar)**2) * m_last).sum()
+    return 1.0 - ss_res / (ss_tot + 1e-8)
