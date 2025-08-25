@@ -1,35 +1,21 @@
+# python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+.env
 
-# Created by https://www.gitignore.io/api/macos
+# jupyter
+.ipynb_checkpoints/
 
-### macOS ###
-*.DS_Store
-.AppleDouble
-.LSOverride
+# outputs
+outputs/
+!outputs/.gitkeep
 
-# Icon must end with two \r
-Icon
+# data (可按需)
+data/
+!data/.gitkeep
 
-
-# Thumbnails
-._*
-
-# Files that might appear in the root of a volume
-.DocumentRevisions-V100
-.fseventsd
-.Spotlight-V100
-.TemporaryItems
-.Trashes
-.VolumeIcon.icns
-.com.apple.timemachine.donotpresent
-
-# Directories potentially created on remote AFP share
-.AppleDB
-.AppleDesktop
-Network Trash Folder
-Temporary Items
-.apdisk
-
-# End of https://www.gitignore.io/api/macos
-
-# debug file
-_site
+# OS
+.DS_Store

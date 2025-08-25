@@ -1,0 +1,17 @@
+name: intraday-ml
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+dependencies:
+  - python=3.10
+  - numpy>=1.24
+  - pandas>=2.0
+  - pyarrow>=14
+  - pyyaml>=6
+  - tqdm>=4.66
+  - pytorch                # CPU/GPU 通用
+  - pytorch-cuda=12.1      # ★ 4080 用 CUDA 12.1；如果只用 CPU，请删掉这一行并加上“cpuonly”见下
+  - pip
+  - pip:
+      - ipykernel          # 让 Jupyter 识别这个环境（可在 Notebook 里选）

@@ -1,0 +1,73 @@
+# configs/default.yaml
+seed: 2025
+
+paths:
+  artifacts_dir: outputs
+  checkpoints_dir: outputs/checkpoints
+  metrics_dir: outputs/metrics
+  logs_dir: outputs/logs
+
+data:
+  # 你的 DataFrame 列名（和你现在的一致）
+  date_col: date
+  time_col: time
+  symbol_col: symbol
+  y_col: y                   # 目标在 t 时刻（已完成 log1p/标准化的可直接用）
+  inner_split_date: '2022-06-01'
+
+  # 窗口设置
+  L_days: 10
+  bars_per_day: 67           # null=自动按训练集众数推断 T
+  min_valid_ratio: 0.6       # 训练窗口内可用标签覆盖率阈值
+
+  # 窗口模式：True=稀疏（缺记录就往前凑满 L），False=日历连续
+  use_sparse: true
+  add_delta_g_feature: true
+  delta_cap: 400
+
+  # UAM 训练采样
+  K_per_symbol: 80
+
+  # DataLoader
+  batch_size: 256
+  num_workers: 0         # in windows enviroment set it as 0    
+  pin_memory: true
+
+model:
+  # DeepLOBv 超参（in_features 会在构建时由 meta 自动匹配）
+  cnn_channels: 64
+  cnn_layers: 2
+  inception_channels: 64
+  inception_layers: 1
+  inception_kernels: [1, 3, 5, 7]
+  lstm_hidden: 128
+  lstm_layers: 1
+  dropout: 0.1
+
+train:
+  epochs: 80
+  optimizer: adamw
+  lr: 5.0e-4
+  weight_decay: 1.0e-4
+  grad_clip: 1.0
+  amp: false                  # 自动混合精度
+  early_stopping:
+    enabled: true
+    metric: r2                # 在 inner_test 上监控 R2（越大越好）
+    patience: 6
+    min_delta: 0.001
+
+  scheduler:
+    name: plateau             # 可选: cosine / plateau / none
+    t_max: 80                 # cosine 所需
+    factor: 0.5               # plateau 所需
+    patience: 5               # plateau 所需
+    min_lr: 1.0e-5
+
+eval:
+  dev_max_windows: 100000     # 固定 dev 子集大小（每轮早停就评它）
+  full_eval_every: 5          # evaluate on the whole validation set every 5 epoch
+  eval_batch_size: 256        # 验证/测试用的 batch size（评估不反传，通常可更大）
+  # 评估只看每个窗口最后一格的一步前瞻
+  save_predictions: false
+  report_by_day: false        # 如需逐日指标可开启（会较慢）

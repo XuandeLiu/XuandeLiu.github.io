@@ -1,0 +1,9 @@
+numpy>=1.24
+pandas>=2.0
+pyyaml>=6.0
+tqdm>=4.66
+scikit-learn>=1.3
+# 安装 PyTorch 请按你的 CUDA 版本选择官网命令（https://pytorch.org/）
+# 例如:
+# torch>=2.2.0
+# torchvision>=0.17.0
